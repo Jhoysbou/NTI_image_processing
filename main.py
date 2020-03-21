@@ -4,9 +4,9 @@ import numpy as np
 
 vs = cv2.VideoCapture("./camera/WIN_20200321_13_34_37_Pro.mp4")
 MIN = 100
-h_min = np.array((0, 97, 0), np.uint8)
-h_max = np.array((255, 255, 255), np.uint8)
 
+h_min = np.array((0, 167, 134), np.uint8)
+h_max = np.array((9, 255, 226), np.uint8)
 
 while True:
     frame = vs.read()[1]
@@ -15,10 +15,11 @@ while True:
     if frame is None:
         break
 
-    blur = cv2.GaussianBlur(frame, (19, 19), 0)
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    blur = cv2.GaussianBlur(hsv, (19, 19), 0)
+
     thresh = cv2.inRange(blur, h_min, h_max)
     cv2.imshow("thresh", thresh)
-    thresh = cv2.bitwise_not(thresh)
 
     cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
                             cv2.CHAIN_APPROX_SIMPLE)

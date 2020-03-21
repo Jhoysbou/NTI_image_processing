@@ -19,7 +19,7 @@ cv2.createTrackbar('s2', 'settings', 255, 255, nothing)
 cv2.createTrackbar('v2', 'settings', 255, 255, nothing)
 crange = [0, 0, 0, 0, 0, 0]
 
-vs = cv2.VideoCapture("./camera/WIN_20200321_13_34_37_Pro.mp4")
+vs = cv2.VideoCapture("./camera/WIN_20200321_13_37_46_Pro.jpg")
 img = vs.read()[1]
 
 while True:
