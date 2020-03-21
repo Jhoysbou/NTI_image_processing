@@ -1,15 +1,22 @@
 import cv2
 import imutils
 import numpy as np
-from imutils.video import VideoStream
-import time
+from objects.Object import Circle, Cube
 
-# vs = cv2.VideoCapture("./camera/bucket.mov")
+vs = cv2.VideoCapture("./camera/bucket.mov")
 
-vs = VideoStream(src=0).start()
-time.sleep(0.5)
+# vs = VideoStream(src=0).start()
+# time.sleep(0.5)
+
+"""Constants"""
+# Frame resolution
+WIDTH = 640
+HEIGHT = 360
+# Length of pool with previous circles to prevent fluctuations of contours
 POOL_LENGTH = 5
+# Min area to detect contours
 MIN = 200
+# Coefficient to prevent fluctuations of contours with circles
 DELTA = 1.3
 
 
@@ -17,26 +24,40 @@ def circle_check(pool, coords):
     if pool:
         for circles in pool:
             for circle in circles:
-                if max(abs(np.array(circle[:-1]) - np.array(coords))) < DELTA * circle[2]:
+                if max(abs(np.array(circle.position) - np.array(coords))) < DELTA * circle[2]:
                     return False
 
     return True
 
 
+def get_color(image, x, y):
+    hsv_color = 255 / 360 * image[y, x, 0]
+    if 0 <= hsv_color < 40 or 320 <= hsv_color < 255:
+        return 'RED'
+    elif 40 <= hsv_color < 70:
+        return 'YELLOW'
+    elif 70 <= hsv_color < 180:
+        return 'GREEN'
+    elif 190 <= hsv_color < 280:
+        return 'BLUE'
+
+
 circles_coords_pool = list()
 
 while True:
-    frame = vs.read()
-    frame = imutils.resize(frame, width=640, height=360)
+    frame = cv2.imread('./camera/WIN_20200321_13_37_18_Pro.jpg')
+    frame = imutils.resize(frame, width=WIDTH, height=HEIGHT)
 
     if frame is None:
         break
 
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    hsv = cv2.GaussianBlur(hsv, (19, 19), 0)
-    gray = cv2.cvtColor(hsv, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(hsv, (19, 19), 0)
+
+    gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(gray, 100, 255, 1)
     thresh = cv2.bitwise_not(thresh)
+
     cv2.imshow("thresh", thresh)
     cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
                             cv2.CHAIN_APPROX_SIMPLE)
@@ -56,19 +77,20 @@ while True:
             # corresponding to the center of the circle
             cv2.circle(frame, (x, y), r, (0, 255, 0), 4)
             circles = list()
-            circles.append([x, y, r])
+            circles.append(Circle(position=(x, y), radius=r, color=get_color(frame, x, y)))
         circles_coords_pool.append(circles)
 
     for c in cnts:
         # if the contour is too small, ignore it
         if cv2.contourArea(c) < MIN:
             continue
-
         (x, y, w, h) = cv2.boundingRect(c)
         if circle_check(circles_coords_pool, [x, y]):
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            center.append([int(x + w / 2), int(y + h / 2)])
-        # print(center)
+            center_x = int(x + w / 2)
+            center_y = int(y + h / 2)
+            center.append(Cube(position=(center_x, center_y), color=get_color(frame, x=center_x, y=center_y)))
+        print(center)
 
     cv2.imshow("result", frame)
     key = cv2.waitKey(1) & 0xFF
