@@ -2,7 +2,7 @@ import cv2
 import imutils
 import numpy as np
 
-vs = cv2.VideoCapture("./camera/WIN_20200321_13_34_37_Pro.mp4")
+vs = cv2.VideoCapture("./camera/bucket.mov")
 MIN = 200
 
 h_min = np.array((158, 195, 0), np.uint8)
@@ -19,12 +19,23 @@ while True:
     blur = cv2.GaussianBlur(hsv, (19, 19), 0)
 
     thresh = cv2.inRange(blur, h_min, h_max)
-    # cv2.imshow("thresh", thresh)
+    cv2.imshow("thresh", thresh)
 
     cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
                             cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     center = []
+
+    circles = cv2.HoughCircles(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), cv2.HOUGH_GRADIENT, 1.5, 20)
+    if circles is not None:
+        # convert the (x, y) coordinates and radius of the circles to integers
+        circles = np.round(circles[0, :]).astype("int")
+        # loop over the (x, y) coordinates and radius of the circles
+        for (x, y, r) in circles:
+            # draw the circle in the output image, then draw a rectangle
+            # corresponding to the center of the circle
+            cv2.circle(frame, (x, y), r, (0, 255, 0), 4)
+
 
     for c in cnts:
         # if the contour is too small, ignore it
@@ -34,14 +45,13 @@ while True:
         (x, y, w, h) = cv2.boundingRect(c)
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
         center.append([int(x + w/2), int(y + h/2)])
-    print(center)
 
-    # cv2.imshow("result", frame)
-    # key = cv2.waitKey(1) & 0xFF
-    #
-    # # if the `q` key is pressed, break from the lop
-    # if key == ord("q"):
-    #     break
+    cv2.imshow("result", frame)
+    key = cv2.waitKey(1) & 0xFF
+
+    # if the `q` key is pressed, break from the lop
+    if key == ord("q"):
+        break
 
 vs.release()
 cv2.destroyAllWindows()
