@@ -1,6 +1,7 @@
 import cv2
 import imutils
 import numpy as np
+import time
 
 
 def nothing(*arg):
@@ -19,9 +20,13 @@ cv2.createTrackbar('s2', 'settings', 255, 255, nothing)
 cv2.createTrackbar('v2', 'settings', 255, 255, nothing)
 crange = [0, 0, 0, 0, 0, 0]
 
-vs = cv2.VideoCapture("./camera/WIN_20200321_13_37_46_Pro.jpg")
-img = vs.read()[1]
+vs = cv2.VideoCapture("./camera/WIN_20200321_13_34_37_Pro.mp4")
+now = time.time()
 
+while abs(now - time.time()) <= 1:
+    img = vs.read()[1]
+
+img = vs.read()[1]
 while True:
     frame = imutils.resize(img, width=640, height=360)
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
