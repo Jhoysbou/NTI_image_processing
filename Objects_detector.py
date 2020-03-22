@@ -1,7 +1,5 @@
 import time
 from typing import List, Optional, Union
-from mean_color import FindDominant
-
 
 import cv2
 import imutils
@@ -24,7 +22,9 @@ class ObjectsDetector:
     # debug_mode - if true call cv2.imshow() to take a look at result
     """
 
-    def __init__(self, width=1280,
+    def __init__(self,
+                 rotation_factor,
+                 width=1280,
                  height=720,
                  circles_pool_length=5,
                  min_area_to_detect=200,
@@ -42,16 +42,22 @@ class ObjectsDetector:
         self._debug_mode = debug_mode
         self._min_area_mean = min_area_to_compute_mean_colors
         self._daytime = 127 if daytime == "DAY" else 100
-        self.findDominant = FindDominant()
+        self._rotation_factor = rotation_factor
 
-    def _get_image_by_px(self, image, start, end):
-        length = abs(end[0] - start[0])
-        width = abs(end[1] - start[1])
-        cropped_image = image[length, width]
-        return cropped_image
+    # crop image
+    def _get_subimage_by_pxs(self, image, start, shift):
+        cropped_image = []
+
+        for i in range(shift[1]):
+            cropped_image.append([])
+            for j in range(shift[0]):
+                cropped_image[i].append([])
+                cropped_image[i][j] = image[start[1] + i][start[0] + j]
+
+        return np.array(cropped_image)
 
     def is_rotated(self, frame):
-        hsv, thresh = self.__prepare_frame(frame)
+        hsv, thresh = self.__prepare_frame(frame, height=self._height, width=self._width)
 
         cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
                                 cv2.CHAIN_APPROX_SIMPLE)
@@ -60,11 +66,33 @@ class ObjectsDetector:
         for c in cnts:
             if cv2.contourArea(c) < self._min_area:
                 continue
+            (x, y, w, h) = cv2.boundingRect(c)
+            area = self._get_subimage_by_pxs(thresh, start=(x, y), shift=(w, h))
+            factor = self.__get_difference(area)
 
-        pass
+            if factor >= self._rotation_factor:
+                return False
+            else:
+                return True
 
-    def __prepare_frame(self, frame):
-        frame = imutils.resize(frame, width=self._width, height=self._height)
+    def __get_difference(self, frame_thresh):
+        reference = cv2.imread('./src/reference.png')
+        shape = min((*frame_thresh.shape, *reference.shape))
+
+        hsv, reference_thresh = self.__prepare_frame(reference, width=shape, height=shape)
+
+        frame_delta = cv2.absdiff(frame_thresh, reference_thresh)
+        frame_delta = cv2.dilate(frame_delta, None, iterations=2)
+        counter = 0
+
+        for row in frame_delta:
+            for pixel in row:
+                if pixel == 255:
+                    counter += 1
+        return counter / shape
+
+    def __prepare_frame(self, frame, width, height):
+        frame = imutils.resize(frame, width=width, height=height)
 
         hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
         blur = cv2.GaussianBlur(hsv, (19, 19), 0)
@@ -122,7 +150,6 @@ class ObjectsDetector:
         else:
             return 'no_color'
 
-
     def get_objects(self, frame) -> Optional[List[Union[Bucket, Cube]]]:
         if frame is None:
             raise ValueError('Frame is none')
@@ -132,7 +159,7 @@ class ObjectsDetector:
         fontScale = 0.5
         fontColor = (255, 255, 255)
 
-        hsv, thresh = self.__prepare_frame(frame)
+        hsv, thresh = self.__prepare_frame(frame, height=self._height, width=self._width)
 
         # Store here all
         objects_in_frame = []
@@ -177,7 +204,6 @@ class ObjectsDetector:
 
         for c in cnts:
             # if the contour is too small, ignore it
-            (x, y, w, h) = cv2.boundingRect(c)
             if cv2.contourArea(c) < self._min_area:
                 continue
             elif cv2.contourArea(c) > self._min_area_mean:
@@ -185,15 +211,15 @@ class ObjectsDetector:
                 pass
                 # area = self._get_image_by_px(frame, [x, y], [x + w, y + h])
                 # cv2.imshow("cropped", area)
-            area = self._get_image_by_px(frame, [x, y], [x + w, y + h])
+            (x, y, w, h) = cv2.boundingRect(c)
+            # area = self._get_image_by_px(frame, [x, y], [x + w, y + h])
 
             # Validation with circle_check
             if self._circle_check(self._circles_coords_pool, [x, y]):
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                side = (h + w) / 2
                 center_x = int(x + w / 2)
                 center_y = int(y + h / 2)
-                cube = Cube(position=(center_x, center_y), color=self._get_color(hsv, x=center_x, y=center_y), side=side)
+                cube = Cube(position=(center_x, center_y), color=self._get_color(hsv, x=center_x, y=center_y))
                 cv2.putText(img=frame, text=str(cube),
                             org=(x, y),
                             fontFace=font,
@@ -202,9 +228,6 @@ class ObjectsDetector:
                 objects_in_frame.append(cube)
 
         cv2.imshow('result', frame)
-
-
-
 
         if cv2.waitKey(25) & 0xFF == ord('q'):
             return None
