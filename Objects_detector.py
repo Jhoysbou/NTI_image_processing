@@ -1,6 +1,6 @@
 import time
 from typing import List
-# from mean_color import get_mean
+from mean_color import get_mean
 
 import cv2
 import imutils
@@ -80,10 +80,16 @@ class ObjectsDetector:
         print(hsv_color)
         if 0 < hsv_color <= 13 or 330 <= hsv_color:
             return 'RED'
+        elif 13 <= hsv_color < 35:
+            return 'BLUE'
+        elif 35 <= hsv_color < 70:
+            return 'ORANGE'
         elif 70 <= hsv_color < 180:
             return 'GREEN'
+        elif 180 <= hsv_color < 300:
+            return 'YELLOW'
         else:
-            return 'noC'
+            return 'no_color'
 
     def _get_image_by_px(self, image, start, end):
         length = abs(start[0] - end[0])
@@ -104,7 +110,7 @@ class ObjectsDetector:
         #     raise ValueError('frame is none')
         frame = imutils.resize(frame, width=self._width, height=self._height)
 
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
         blur = cv2.GaussianBlur(hsv, (19, 19), 0)
 
         gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
