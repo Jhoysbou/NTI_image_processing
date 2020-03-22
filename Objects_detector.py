@@ -4,25 +4,27 @@ import cv2
 import imutils
 import numpy as np
 
-from objects.Object import Bucket, Cube, Object
+from objects.Object import Bucket, Cube
 
 
 class ObjectsDetector:
     """
     Constants
     #
-    # width Frame resolution
-    # height
+    # @param width
+    # @param height
     #
-    # circles_pool_length - Length of pool with previous circles to prevent fluctuations of contours
-    # min_area_to_detect - min area to detect contours
+    # @param circles_pool_length length of pool with previous circles to prevent fluctuations of contours
+    # @param min_area_to_detect min area to detect contours
     #
-    # circle_factor - Coefficient to prevent fluctuations of contours with circles
-    # debug_mode - if true call cv2.imshow() to take a look at result
+    # @param circle_factor coefficient to prevent fluctuations of contours with circles
+    # @param debug_mode if true call cv2.imshow() to take a look at result
+    # @param rotation_factor coefficient for is_rotated. The smaller it is, the more precise would be algorithm.
+    # @param daytime preset for day or night light. Should be customize for your environment.
     """
 
     def __init__(self,
-                 rotation_factor=100,
+                 rotation_factor=10,
                  width=1280,
                  height=720,
                  circles_pool_length=5,
@@ -55,9 +57,11 @@ class ObjectsDetector:
 
         return np.array(cropped_image)
 
+    # Can detect that cube is rotated relatively to the camera
     def is_rotated(self, frame):
         hsv, thresh = self.__prepare_frame(frame, height=self._height, width=self._width)
 
+        # find cube
         cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
                                 cv2.CHAIN_APPROX_SIMPLE)
         cnts = imutils.grab_contours(cnts)
@@ -66,14 +70,17 @@ class ObjectsDetector:
             if cv2.contourArea(c) < self._min_area:
                 continue
             (x, y, w, h) = cv2.boundingRect(c)
+            # take a small image of it
             area = self._get_subimage_by_pxs(thresh, start=(x, y), shift=(w, h))
+            # compute a factor
             factor = self.__get_difference(area)
-            print(factor)
+
             if factor >= self._rotation_factor:
                 return True
             else:
                 return False
 
+    # using absdiff to get all pixels that deviate from reference
     def __get_difference(self, frame_thresh):
         reference = cv2.imread('./src/reference.png')
         shape = min(min((frame_thresh.shape, reference.shape)))
@@ -83,14 +90,16 @@ class ObjectsDetector:
 
         frame_delta = cv2.absdiff(frame_thresh, reference_thresh)
         frame_delta = cv2.dilate(frame_delta, None, iterations=2)
+        # count pixels
         counter = 0
-
         for row in frame_delta:
             for pixel in row:
                 if pixel == 255:
                     counter += 1
+        # devide by shape to get relation with size of the cropped image
         return counter / shape
 
+    # function that resize and make hsv and thresh copy of a frame
     def __prepare_frame(self, frame, width, height):
         frame = cv2.resize(frame, (width, height))
 
@@ -101,7 +110,8 @@ class ObjectsDetector:
         ret, thresh = cv2.threshold(gray, self._daytime, 255, 1)
         thresh = cv2.bitwise_not(thresh)
         return hsv, thresh
-
+    # Check if this object is circle and we shouldn't detect it
+    # iterate though pool with circles and check a distance between coordinates and circles
     def _circle_check(self, pool, coords):
         if pool:
             for circles in pool:
@@ -112,10 +122,19 @@ class ObjectsDetector:
 
         return True
 
-    # Color detection by hue
-    # check HSV wiki for details
+    """
+    # @brief Color detection by hue, check HSV wiki for details. Take a 20x20 px square and count mean H component
+    # then translate it to 360 points scale. Then just compare it with table (wiki) 
+    # @note if a color cannot be detected return 'no_color'
+    # @param image just image where needed to detect color 
+    
+    # @param x coordinate of a dot where to detect color
+    # @param y 
+    
+    """
 
     def _get_color(self, image, x, y):
+        # if contour nearby edge use square with smaller side
         area = 0
         for i in range(11):
             if x-i < 0:
@@ -130,13 +149,14 @@ class ObjectsDetector:
                 area = i
 
         avg_color = 0
-
+        # Count mean
         for i in range(x-area, x+area):
             for j in range(y-area, y+area):
                 avg_color += image[j, i, 0]
+        # translate result
         avg_color = avg_color / area**2 if area != 0 else image[y, x, 0]
         hsv_color = 255 / 360 * avg_color
-
+        # compare
         if 0 < hsv_color <= 13 or 330 <= hsv_color:
             return 'RED'
         elif 13 <= hsv_color < 35:
@@ -150,6 +170,10 @@ class ObjectsDetector:
         else:
             return 'no_color'
 
+    """
+    # @brief Detect objects(bucket or cube) in image
+    # @param frame take an image (RGB) were need to detect objects(bucket or cube). 
+    """
     def get_objects(self, frame) -> Optional[List[Union[Bucket, Cube]]]:
         if frame is None:
             raise ValueError('Frame is none')
@@ -161,14 +185,14 @@ class ObjectsDetector:
 
         hsv, thresh = self.__prepare_frame(frame, height=self._height, width=self._width)
 
-        # Store here all
+        # Store here all objects
         objects_in_frame = []
 
         """
-        First detect only buckets. It's more simple to detect circle in frame then 
-        we iterate each contour and check if it is circle or not.
-        We conclude a contour a circle if it has the center nearby a center of already detected circles.
-        `get_color` - function that make a verification for contour
+        # First detect only buckets. It's more simple to detect circle in frame then 
+        # we iterate each contour and check if it is circle or not.
+        # We conclude a contour a circle if it has the center nearby a center of already detected circles.
+        # `get_color` - function that make a verification for contour
         """
 
         #  Pool must not be bigger than max size

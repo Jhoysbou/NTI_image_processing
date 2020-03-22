@@ -4,11 +4,14 @@ Objects for detection
 
 
 class Object:
+    """
     # position – tuple of pixels!!!
     # x and y coordinates (e.g. (x,y) )
     #
     # color - String
     # Can be 'RED', 'YELLOW', 'GREEN', and 'BLUE'
+    """
+
     def __init__(self, position, color):
         self.position = position
         self.color = color
@@ -27,7 +30,7 @@ class Object:
     def get_color(self):
         return self.color
 
-    def str(self):
+    def __str__(self):
         return '{} {} at position {}'.format(self.color, self.__class__.__name__, self.position)
 
 
