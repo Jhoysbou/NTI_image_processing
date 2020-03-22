@@ -1,3 +1,4 @@
+import time
 from typing import List
 # from mean_color import get_mean
 
@@ -29,7 +30,8 @@ class ObjectsDetector:
                  min_area_to_detect=200,
                  circle_factor=1.3,
                  debug_mode=False,
-                 min_area_to_compute_mean_colors=20000):
+                 min_area_to_compute_mean_colors=20000,
+                 daytime="DAY"):
 
         self._width = width
         self._height = height
@@ -39,6 +41,7 @@ class ObjectsDetector:
         self._circles_coords_pool = list()
         self._debug_mode = debug_mode
         self._min_area_mean = min_area_to_compute_mean_colors
+        self._daytime = 127 if daytime == "DAY" else 100
 
     def _circle_check(self, pool, coords):
         if pool:
@@ -52,34 +55,60 @@ class ObjectsDetector:
 
     # Color detection by hue
     # check HSV wiki for details
+
     def _get_color(self, image, x, y):
-        hsv_color = 255 / 360 * image[y, x, 0]
-        if 0 <= hsv_color < 40 or 320 <= hsv_color < 255:
+        area = 0
+        for i in range(11):
+            if x-i < 0:
+                break
+            elif x+i >= self._width:
+                break
+            elif y-i < 0:
+                break
+            elif y+i >= self._height:
+                break
+            else:
+                area = i
+
+        avg_color = 0
+
+        for i in range(x-area, x+area):
+            for j in range(y-area, y+area):
+                avg_color += image[j, i, 0]
+        avg_color = avg_color / area**2 if area != 0 else image[y, x, 0]
+        hsv_color = 255 / 360 * avg_color
+        print(hsv_color)
+        if 0 < hsv_color <= 13 or 330 <= hsv_color:
             return 'RED'
-        elif 40 <= hsv_color < 70:
-            return 'YELLOW'
         elif 70 <= hsv_color < 180:
             return 'GREEN'
-        elif 190 <= hsv_color < 280:
-            return 'BLUE'
+        else:
+            return 'noC'
 
     def _get_image_by_px(self, image, start, end):
         length = abs(start[0] - end[0])
         width = abs(start[1] - end[1])
-        cropped_image = image[length, width]
+        cropped_image = image[width, length]
         return cropped_image
 
     def get_objects(self, frame) -> List[Cube]:
-        frame = imutils.resize(frame, width=self._width, height=self._height)
-
         if frame is None:
-            raise ValueError('frame is none')
+            raise ValueError('Frame is none')
+
+        # Font
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        fontScale = 0.5
+        fontColor = (255, 255, 255)
+
+        # if frame is None:
+        #     raise ValueError('frame is none')
+        frame = imutils.resize(frame, width=self._width, height=self._height)
 
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         blur = cv2.GaussianBlur(hsv, (19, 19), 0)
 
         gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(gray, 100, 255, 1)
+        ret, thresh = cv2.threshold(gray, self._daytime, 255, 1)
         thresh = cv2.bitwise_not(thresh)
 
         # Store here all
@@ -107,7 +136,12 @@ class ObjectsDetector:
                 # corresponding to the center of the circle
                 cv2.circle(frame, (x, y), r, (0, 255, 0), 4)
                 circles = list()
-                bucket = Bucket(position=(x, y), radius=r, color=self._get_color(frame, x, y))
+                bucket = Bucket(position=(x, y), radius=r, color=self._get_color(hsv, x, y))
+                cv2.putText(img=frame, text=str(bucket),
+                            org=(x, y),
+                            fontFace=font,
+                            fontScale=fontScale,
+                            color=fontColor)
                 circles.append(bucket)
                 objects_in_frame.append(bucket)
             self._circles_coords_pool.append(circles)
@@ -134,11 +168,17 @@ class ObjectsDetector:
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 center_x = int(x + w / 2)
                 center_y = int(y + h / 2)
-                objects_in_frame.append(
-                    Cube(position=(center_x, center_y), color=self._get_color(frame, x=center_x, y=center_y)))
-            print(cv2.contourArea(c))
-        if self._debug_mode:
-            cv2.imshow("result", frame)
-            key = cv2.waitKey(1) & 0xFF
+                cube = Cube(position=(center_x, center_y), color=self._get_color(hsv, x=center_x, y=center_y))
+                cv2.putText(img=frame, text=str(cube),
+                            org=(x, y),
+                            fontFace=font,
+                            fontScale=fontScale,
+                            color=fontColor)
+                objects_in_frame.append(cube)
+
+        cv2.imshow('result', frame)
+
+        if cv2.waitKey(25) & 0xFF == ord('q'):
+            return None
 
         return objects_in_frame

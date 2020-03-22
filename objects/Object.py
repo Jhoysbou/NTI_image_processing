@@ -20,8 +20,7 @@ class Object:
         return self.color
 
     def __str__(self):
-        return '{} at position {} with color {}'.format(self.__class__.__name__, self.position, self.color)
-
+        return '{} {} at position {}'.format(self.color, self.__class__.__name__, self.position)
 
 class Cube(Object):
     def __init__(self, position, color):
