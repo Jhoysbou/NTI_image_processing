@@ -1,6 +1,7 @@
 import time
-from typing import List
-from mean_color import get_mean
+from typing import List, Optional, Union
+from mean_color import FindDominant
+
 
 import cv2
 import imutils
@@ -21,14 +22,13 @@ class ObjectsDetector:
     #
     # circle_factor - Coefficient to prevent fluctuations of contours with circles
     # debug_mode - if true call cv2.imshow() to take a look at result
-
     """
 
-    def __init__(self, width=640,
-                 height=360,
+    def __init__(self, width=1280,
+                 height=720,
                  circles_pool_length=5,
                  min_area_to_detect=200,
-                 circle_factor=1.3,
+                 circle_factor=1.25,
                  debug_mode=False,
                  min_area_to_compute_mean_colors=20000,
                  daytime="DAY"):
@@ -42,13 +42,44 @@ class ObjectsDetector:
         self._debug_mode = debug_mode
         self._min_area_mean = min_area_to_compute_mean_colors
         self._daytime = 127 if daytime == "DAY" else 100
+        self.findDominant = FindDominant()
+
+    def _get_image_by_px(self, image, start, end):
+        length = abs(end[0] - start[0])
+        width = abs(end[1] - start[1])
+        cropped_image = image[length, width]
+        return cropped_image
+
+    def is_rotated(self, frame):
+        hsv, thresh = self.__prepare_frame(frame)
+
+        cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
+                                cv2.CHAIN_APPROX_SIMPLE)
+        cnts = imutils.grab_contours(cnts)
+
+        for c in cnts:
+            if cv2.contourArea(c) < self._min_area:
+                continue
+
+        pass
+
+    def __prepare_frame(self, frame):
+        frame = imutils.resize(frame, width=self._width, height=self._height)
+
+        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+        blur = cv2.GaussianBlur(hsv, (19, 19), 0)
+
+        gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(gray, self._daytime, 255, 1)
+        thresh = cv2.bitwise_not(thresh)
+        return hsv, thresh
 
     def _circle_check(self, pool, coords):
         if pool:
             for circles in pool:
                 for circle in circles:
-                    if max(abs(np.array(circle.get_position()) - np.array(
-                            coords))) < self._circle_factor * circle.get_radius():
+                    if max(abs(np.array(circle.get_position()) - np.array(coords))) < \
+                            self._circle_factor * circle.get_radius():
                         return False
 
         return True
@@ -77,7 +108,7 @@ class ObjectsDetector:
                 avg_color += image[j, i, 0]
         avg_color = avg_color / area**2 if area != 0 else image[y, x, 0]
         hsv_color = 255 / 360 * avg_color
-        print(hsv_color)
+
         if 0 < hsv_color <= 13 or 330 <= hsv_color:
             return 'RED'
         elif 13 <= hsv_color < 35:
@@ -91,13 +122,8 @@ class ObjectsDetector:
         else:
             return 'no_color'
 
-    def _get_image_by_px(self, image, start, end):
-        length = abs(start[0] - end[0])
-        width = abs(start[1] - end[1])
-        cropped_image = image[width, length]
-        return cropped_image
 
-    def get_objects(self, frame) -> List[Cube]:
+    def get_objects(self, frame) -> Optional[List[Union[Bucket, Cube]]]:
         if frame is None:
             raise ValueError('Frame is none')
 
@@ -106,16 +132,7 @@ class ObjectsDetector:
         fontScale = 0.5
         fontColor = (255, 255, 255)
 
-        # if frame is None:
-        #     raise ValueError('frame is none')
-        frame = imutils.resize(frame, width=self._width, height=self._height)
-
-        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
-        blur = cv2.GaussianBlur(hsv, (19, 19), 0)
-
-        gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(gray, self._daytime, 255, 1)
-        thresh = cv2.bitwise_not(thresh)
+        hsv, thresh = self.__prepare_frame(frame)
 
         # Store here all
         objects_in_frame = []
@@ -132,7 +149,7 @@ class ObjectsDetector:
             self._circles_coords_pool.pop()
 
         # Get circles
-        circles = cv2.HoughCircles(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), cv2.HOUGH_GRADIENT, 1.5, 20)
+        circles = cv2.HoughCircles(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), cv2.HOUGH_GRADIENT, dp=1.5, minDist=100, param1=50, param2=100)
         if circles is not None:
             # convert the (x, y) coordinates and radius of the circles to integers
             circles = np.round(circles[0, :]).astype("int")
@@ -164,17 +181,19 @@ class ObjectsDetector:
             if cv2.contourArea(c) < self._min_area:
                 continue
             elif cv2.contourArea(c) > self._min_area_mean:
+                # TODO find dominant color
                 pass
                 # area = self._get_image_by_px(frame, [x, y], [x + w, y + h])
                 # cv2.imshow("cropped", area)
-                # get_mean(area)
+            area = self._get_image_by_px(frame, [x, y], [x + w, y + h])
 
             # Validation with circle_check
             if self._circle_check(self._circles_coords_pool, [x, y]):
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                side = (h + w) / 2
                 center_x = int(x + w / 2)
                 center_y = int(y + h / 2)
-                cube = Cube(position=(center_x, center_y), color=self._get_color(hsv, x=center_x, y=center_y))
+                cube = Cube(position=(center_x, center_y), color=self._get_color(hsv, x=center_x, y=center_y), side=side)
                 cv2.putText(img=frame, text=str(cube),
                             org=(x, y),
                             fontFace=font,
@@ -183,6 +202,9 @@ class ObjectsDetector:
                 objects_in_frame.append(cube)
 
         cv2.imshow('result', frame)
+
+
+
 
         if cv2.waitKey(25) & 0xFF == ord('q'):
             return None
