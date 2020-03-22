@@ -25,8 +25,11 @@ class Cube(Object):
         super().__init__(position, color)
 
 
-class Circle(Object):
+class Bucket(Object):
     # radius - int, pixels!
     def __init__(self, position, color, radius):
         super().__init__(position, color)
         self.radius = radius
+
+    def get_radius(self):
+        return self.radius

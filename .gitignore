@@ -1,3 +1,6 @@
 .idea
 src
 camera
+tes.py
+__pycache__/
+objects/__pycache__/
