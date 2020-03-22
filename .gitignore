@@ -1,6 +1,6 @@
 .idea
 src
 camera
-tes.py
+mean_color.py
 __pycache__/
 objects/__pycache__/

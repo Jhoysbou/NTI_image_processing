@@ -1,4 +1,5 @@
 from typing import List
+from mean_color import get_mean
 
 import cv2
 import imutils
@@ -21,12 +22,14 @@ class ObjectsDetector:
     # debug_mode - if true call cv2.imshow() to take a look at result
 
     """
+
     def __init__(self, width=640,
                  height=360,
                  circles_pool_length=5,
                  min_area_to_detect=200,
                  circle_factor=1.3,
-                 debug_mode=False):
+                 debug_mode=False,
+                 min_area_to_compute_mean_colors=20000):
 
         self._width = width
         self._height = height
@@ -35,6 +38,7 @@ class ObjectsDetector:
         self._circle_factor = circle_factor
         self._circles_coords_pool = list()
         self._debug_mode = debug_mode
+        self._min_area_mean = min_area_to_compute_mean_colors
 
     def _circle_check(self, pool, coords):
         if pool:
@@ -59,6 +63,12 @@ class ObjectsDetector:
         elif 190 <= hsv_color < 280:
             return 'BLUE'
 
+    def _get_image_by_px(self, image, start, end):
+        length = abs(start[0] - end[0])
+        width = abs(start[1] - end[1])
+        cropped_image = image[length, width]
+        return cropped_image
+
     def get_objects(self, frame) -> List[Cube]:
         frame = imutils.resize(frame, width=self._width, height=self._height)
 
@@ -72,7 +82,6 @@ class ObjectsDetector:
         ret, thresh = cv2.threshold(gray, 100, 255, 1)
         thresh = cv2.bitwise_not(thresh)
 
-        cv2.imshow("thresh", thresh)
         # Store here all
         objects_in_frame = []
 
@@ -98,8 +107,11 @@ class ObjectsDetector:
                 # corresponding to the center of the circle
                 cv2.circle(frame, (x, y), r, (0, 255, 0), 4)
                 circles = list()
-                circles.append(Bucket(position=(x, y), radius=r, color=self._get_color(frame, x, y)))
+                bucket = Bucket(position=(x, y), radius=r, color=self._get_color(frame, x, y))
+                circles.append(bucket)
+                objects_in_frame.append(bucket)
             self._circles_coords_pool.append(circles)
+
 
         # Check all contours
         cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
@@ -108,9 +120,13 @@ class ObjectsDetector:
 
         for c in cnts:
             # if the contour is too small, ignore it
+            (x, y, w, h) = cv2.boundingRect(c)
             if cv2.contourArea(c) < self._min_area:
                 continue
-            (x, y, w, h) = cv2.boundingRect(c)
+            elif cv2.contourArea(c) > self._min_area_mean:
+                area = self._get_image_by_px(frame, [x, y], [x + w, y + h])
+                get_mean(area)
+
             # Validation with circle_check
             if self._circle_check(self._circles_coords_pool, [x, y]):
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -118,6 +134,7 @@ class ObjectsDetector:
                 center_y = int(y + h / 2)
                 objects_in_frame.append(
                     Cube(position=(center_x, center_y), color=self._get_color(frame, x=center_x, y=center_y)))
+            print(cv2.contourArea(c))
         if self._debug_mode:
             cv2.imshow("result", frame)
             key = cv2.waitKey(1) & 0xFF

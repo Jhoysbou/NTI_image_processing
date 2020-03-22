@@ -16,6 +16,9 @@ class Object:
     def get_position(self):
         return self.position
 
+    def get_color(self):
+        return self.color
+
     def __str__(self):
         return '{} at position {} with color {}'.format(self.__class__.__name__, self.position, self.color)
 
