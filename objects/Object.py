@@ -1,9 +1,11 @@
+from abc import ABC
+
 """
 Objects for detection
 """
 
 
-class Object:
+class Object(ABC):
     """
     # position – tuple of pixels!!!
     # x and y coordinates (e.g. (x,y) )
@@ -11,7 +13,6 @@ class Object:
     # color - String
     # Can be 'RED', 'YELLOW', 'GREEN', and 'BLUE'
     """
-
     def __init__(self, position, color):
         self.position = position
         self.color = color
