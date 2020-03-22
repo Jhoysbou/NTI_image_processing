@@ -1,5 +1,5 @@
 from typing import List
-from mean_color import get_mean
+# from mean_color import get_mean
 
 import cv2
 import imutils
@@ -124,8 +124,10 @@ class ObjectsDetector:
             if cv2.contourArea(c) < self._min_area:
                 continue
             elif cv2.contourArea(c) > self._min_area_mean:
-                area = self._get_image_by_px(frame, [x, y], [x + w, y + h])
-                get_mean(area)
+                pass
+                # area = self._get_image_by_px(frame, [x, y], [x + w, y + h])
+                # cv2.imshow("cropped", area)
+                # get_mean(area)
 
             # Validation with circle_check
             if self._circle_check(self._circles_coords_pool, [x, y]):
