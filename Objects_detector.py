@@ -1,4 +1,3 @@
-import time
 from typing import List, Optional, Union
 
 import cv2
@@ -23,7 +22,7 @@ class ObjectsDetector:
     """
 
     def __init__(self,
-                 rotation_factor,
+                 rotation_factor=100,
                  width=1280,
                  height=720,
                  circles_pool_length=5,
@@ -69,17 +68,18 @@ class ObjectsDetector:
             (x, y, w, h) = cv2.boundingRect(c)
             area = self._get_subimage_by_pxs(thresh, start=(x, y), shift=(w, h))
             factor = self.__get_difference(area)
-
+            print(factor)
             if factor >= self._rotation_factor:
-                return False
-            else:
                 return True
+            else:
+                return False
 
     def __get_difference(self, frame_thresh):
         reference = cv2.imread('./src/reference.png')
-        shape = min((*frame_thresh.shape, *reference.shape))
+        shape = min(min((frame_thresh.shape, reference.shape)))
 
         hsv, reference_thresh = self.__prepare_frame(reference, width=shape, height=shape)
+        frame_thresh = cv2.resize(frame_thresh, (shape, shape))
 
         frame_delta = cv2.absdiff(frame_thresh, reference_thresh)
         frame_delta = cv2.dilate(frame_delta, None, iterations=2)
@@ -92,7 +92,7 @@ class ObjectsDetector:
         return counter / shape
 
     def __prepare_frame(self, frame, width, height):
-        frame = imutils.resize(frame, width=width, height=height)
+        frame = cv2.resize(frame, (width, height))
 
         hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
         blur = cv2.GaussianBlur(hsv, (19, 19), 0)

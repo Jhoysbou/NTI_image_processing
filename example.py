@@ -1,7 +1,5 @@
 import cv2
 from Objects_detector import ObjectsDetector
-import time
-from imutils.video import VideoStream
 
 vs = cv2.VideoCapture("./camera/WIN_20200321_13_37_18_Pro.jpg")
 # vs = VideoStream(src=0).start()
