@@ -24,6 +24,7 @@ class ObjectsDetector:
     """
 
     def __init__(self,
+                 # TODO determine this factor
                  rotation_factor=10,
                  width=1280,
                  height=720,
