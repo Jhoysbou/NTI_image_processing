@@ -26,10 +26,10 @@ class ObjectsDetector:
     def __init__(self,
                  # TODO determine this factor
                  rotation_factor=22,
-                 width=1280,
-                 height=720,
+                 width=640,
+                 height=360,
                  circles_pool_length=5,
-                 min_area_to_detect=200,
+                 min_area_to_detect=600,
                  circle_factor=1.25,
                  debug_mode=False,
                  min_area_to_compute_mean_colors=20000,
@@ -90,7 +90,7 @@ class ObjectsDetector:
     def __get_difference(self, frame_thresh):
         reference = cv2.imread('./src/reference.png')
         shape = min(min((frame_thresh.shape, reference.shape[:-1])))
-
+        frame = cv2.resize(reference, (shape, shape))
         hsv, reference_thresh = self.__prepare_frame(reference, width=shape, height=shape)
         frame_thresh = cv2.resize(frame_thresh, (shape, shape))
 
@@ -108,7 +108,6 @@ class ObjectsDetector:
 
     # function that resize and make hsv and thresh copy of a frame
     def __prepare_frame(self, frame, width, height):
-        frame = cv2.resize(frame, (width, height))
 
         hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
         blur = cv2.GaussianBlur(hsv, (19, 19), 0)
@@ -185,10 +184,13 @@ class ObjectsDetector:
         if frame is None:
             raise ValueError('Frame is none')
 
+        frame = cv2.resize(frame, (self._width, self._height))
+
         # Font
         font = cv2.FONT_HERSHEY_SIMPLEX
         fontScale = 0.5
         fontColor = (255, 255, 255)
+
 
         hsv, thresh = self.__prepare_frame(frame, height=self._height, width=self._width)
 
@@ -227,7 +229,7 @@ class ObjectsDetector:
                 objects_in_frame.append(bucket)
             self._circles_coords_pool.append(circles)
 
-
+        cv2.imshow('thresh', thresh)
         # Check all contours
         cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
                                 cv2.CHAIN_APPROX_SIMPLE)
