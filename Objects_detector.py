@@ -25,7 +25,7 @@ class ObjectsDetector:
 
     def __init__(self,
                  # TODO determine this factor
-                 rotation_factor=10,
+                 rotation_factor=22,
                  width=1280,
                  height=720,
                  circles_pool_length=5,
@@ -73,8 +73,13 @@ class ObjectsDetector:
             (x, y, w, h) = cv2.boundingRect(c)
             # take a small image of it
             area = self._get_subimage_by_pxs(thresh, start=(x, y), shift=(w, h))
+            cv2.imshow('result', area)
             # compute a factor
             factor = self.__get_difference(area)
+            print(factor)
+
+            if cv2.waitKey(25) & 0xFF == ord('q'):
+                return None
 
             if factor >= self._rotation_factor:
                 return True

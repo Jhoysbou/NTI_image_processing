@@ -1,5 +1,5 @@
 .idea
 camera
-mean_color.py
+dominant_color.py
 __pycache__/
 objects/__pycache__/
