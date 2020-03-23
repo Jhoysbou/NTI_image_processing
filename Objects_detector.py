@@ -5,8 +5,6 @@ import imutils
 import numpy as np
 
 from objects.Object import Bucket, Cube
-from dominant_color import DominantColorDetector
-
 
 class ObjectsDetector:
     """
@@ -30,7 +28,7 @@ class ObjectsDetector:
                  width=640,
                  height=360,
                  circles_pool_length=5,
-                 min_area_to_detect=600,
+                 min_area_to_detect=400,
                  circle_factor=1.25,
                  debug_mode=False,
                  # TODO change min are
@@ -47,7 +45,19 @@ class ObjectsDetector:
         self._min_area_for_dominant = min_area_to_compute_mean_colors
         self._daytime = 100 if daytime == "DAY" else 125
         self._rotation_factor = rotation_factor
-        self._dominant_detector = DominantColorDetector(n_clusters=7)
+
+    def stupid_detection(self, frame):
+        hsv, thresh = self.__prepare_frame(frame, height=self._height, width=self._width)
+        cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
+                                cv2.CHAIN_APPROX_SIMPLE)
+        cnts = imutils.grab_contours(cnts)
+        for c in cnts:
+            if cv2.contourArea(c) < self._min_area:
+                continue
+            (x, y, w, h) = cv2.boundingRect(c)
+
+            return x + w / 2, y + h / 2
+
 
     # crop image
     def _get_subimage_by_pxs(self, image, start, shift):
@@ -220,8 +230,8 @@ class ObjectsDetector:
             self._circles_coords_pool.pop()
 
         # Get circles
-        circles = cv2.HoughCircles(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), cv2.HOUGH_GRADIENT, dp=1.5, minDist=100,
-                                   param1=50, param2=100)
+        circles = cv2.HoughCircles(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), cv2.HOUGH_GRADIENT, dp=1.5, minDist=1000,
+                                   param1=65, param2=90)
         if circles is not None:
             # convert the (x, y) coordinates and radius of the circles to integers
             circles = np.round(circles[0, :]).astype("int")
