@@ -73,10 +73,10 @@ class ObjectsDetector:
             (x, y, w, h) = cv2.boundingRect(c)
             # take a small image of it
             area = self._get_subimage_by_pxs(thresh, start=(x, y), shift=(w, h))
-            cv2.imshow('result', area)
+            print(area.shape)
+            # cv2.imshow('result', area)
             # compute a factor
             factor = self.__get_difference(area)
-            print(factor)
 
             if cv2.waitKey(25) & 0xFF == ord('q'):
                 return None
@@ -89,13 +89,14 @@ class ObjectsDetector:
     # using absdiff to get all pixels that deviate from reference
     def __get_difference(self, frame_thresh):
         reference = cv2.imread('./src/reference.png')
-        shape = min(min((frame_thresh.shape, reference.shape)))
+        shape = min(min((frame_thresh.shape, reference.shape[:-1])))
 
         hsv, reference_thresh = self.__prepare_frame(reference, width=shape, height=shape)
         frame_thresh = cv2.resize(frame_thresh, (shape, shape))
 
         frame_delta = cv2.absdiff(frame_thresh, reference_thresh)
         frame_delta = cv2.dilate(frame_delta, None, iterations=2)
+
         # count pixels
         counter = 0
         for row in frame_delta:
