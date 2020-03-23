@@ -34,7 +34,7 @@ class ObjectsDetector:
                  circle_factor=1.25,
                  debug_mode=False,
                  # TODO change min are
-                 min_area_to_compute_mean_colors=100000,
+                 min_area_to_compute_mean_colors=25000,
                  daytime="DAY"):
 
         self._width = width
@@ -254,7 +254,8 @@ class ObjectsDetector:
                 continue
             elif cv2.contourArea(c) > self._min_area_for_dominant:
                 # TODO find dominant color
-                self._reveal_clusters(frame, position=(x, y), shift=(w, h))
+                pass
+                # self._reveal_clusters(frame, position=(x, y), sgithift=(w, h))
 
                 # area = self._get_image_by_px(frame, [x, y], [x + w, y + h])
                 # cv2.imshow("cropped", area)
