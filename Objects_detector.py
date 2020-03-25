@@ -6,6 +6,7 @@ import numpy as np
 
 from objects.Object import Bucket, Cube
 
+
 class ObjectsDetector:
     """
     Constants
@@ -27,9 +28,9 @@ class ObjectsDetector:
                  rotation_factor=22,
                  width=640,
                  height=360,
-                 circles_pool_length=5,
+                 circles_pool_length=2,
                  min_area_to_detect=400,
-                 circle_factor=1.25,
+                 circle_factor=0.75,
                  debug_mode=False,
                  # TODO change min are
                  min_area_to_compute_mean_colors=25000,
@@ -57,7 +58,6 @@ class ObjectsDetector:
             (x, y, w, h) = cv2.boundingRect(c)
 
             return x + w / 2, y + h / 2
-
 
     # crop image
     def _get_subimage_by_pxs(self, image, start, shift):
@@ -230,8 +230,8 @@ class ObjectsDetector:
             self._circles_coords_pool.pop()
 
         # Get circles
-        circles = cv2.HoughCircles(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), cv2.HOUGH_GRADIENT, dp=1.5, minDist=1000,
-                                   param1=65, param2=90)
+        circles = cv2.HoughCircles(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), cv2.HOUGH_GRADIENT, dp=1.2, minDist=200,
+                                   param1=55, param2=100)
         if circles is not None:
             # convert the (x, y) coordinates and radius of the circles to integers
             circles = np.round(circles[0, :]).astype("int")
@@ -272,7 +272,7 @@ class ObjectsDetector:
 
             # area = self._get_image_by_px(frame, [x, y], [x + w, y + h])
             # Validation with circle_check
-            if self._circle_check(self._circles_coords_pool, [x, y]):
+            if self._circle_check(self._circles_coords_pool, [x + w/2, y + h/2]):
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 center_x = int(x + w / 2)
                 center_y = int(y + h / 2)

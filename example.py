@@ -1,7 +1,7 @@
 import cv2
 from Objects_detector import ObjectsDetector
 
-vs = cv2.VideoCapture(0)
+vs = cv2.VideoCapture('camera/bucket.mov')
 # vs = VideoStream(src=0).start()
 # time.sleep(0.5)
 
