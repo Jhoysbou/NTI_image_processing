@@ -1,4 +1,4 @@
 # Object detection
 
 Example
-![](./camera/example.gif) 
+![](src/example.gif)
