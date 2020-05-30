@@ -11,7 +11,8 @@ while True:
     frame = vs.read()[1]
     # print(detector.is_rotated(frame))
 
-    objects = detector.get_objects(frame)
+    frame, objects = detector.get_objects(frame)
+
 
 vs.release()
 cv2.destroyAllWindows()

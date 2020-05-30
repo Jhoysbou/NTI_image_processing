@@ -289,4 +289,4 @@ class ObjectsDetector:
         if cv2.waitKey(25) & 0xFF == ord('q'):
             return None
 
-        return objects_in_frame
+        return frame, objects_in_frame
