@@ -1,4 +1,4 @@
 # Object detection
 
-Example
+Example \
 ![](src/example.gif)
